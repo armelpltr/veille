@@ -42,6 +42,17 @@
   .site-chip input:checked + label { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
   .site-chip label:hover { border-color: #555; color: var(--text); }
   .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+  .product-btn {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; cursor: pointer; transition: all 0.15s; user-select: none;
+  }
+  .product-btn:hover:not(.disabled) { border-color: #555; }
+  .product-btn.active { border-color: var(--accent); background: var(--accent-dim); }
+  .product-btn.disabled { opacity: 0.35; cursor: default; }
+  .product-btn-ref { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--accent); margin-bottom: 6px; }
+  .product-btn.disabled .product-btn-ref { color: var(--muted); }
+  .product-btn-name { font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 1.5; }
   .btn {
     width: 100%; margin-top: 24px; background: var(--accent); color: #0f0f0f;
     border: none; border-radius: 8px; padding: 14px; font-family: var(--sans);
@@ -117,8 +128,17 @@
 
 
   <div class="field">
-    <label>Référence produit</label>
-    <input type="text" id="query" placeholder="P121-23" autocomplete="off" />
+    <label>Produit</label>
+    <div class="products-grid" id="productsGrid">
+      <div class="product-btn active" data-ref="P121-23" onclick="selectProduct(this)">
+        <div class="product-btn-ref">P121-23</div>
+        <div class="product-btn-name">Sécateur lame franche<br>BAHCO PRADINES · Ø 25 mm</div>
+      </div>
+      <div class="product-btn disabled" title="Bientôt disponible">
+        <div class="product-btn-ref">+ ajouter</div>
+        <div class="product-btn-name">Prochain produit</div>
+      </div>
+    </div>
   </div>
 
   <div class="divider"></div>
@@ -148,6 +168,15 @@
 <script>
 const TAVILY_API_KEY = '__TAVILY_KEY__';
 
+let selectedRef = 'P121-23';
+
+function selectProduct(el) {
+  if (el.classList.contains('disabled')) return;
+  document.querySelectorAll('.product-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  selectedRef = el.dataset.ref;
+}
+
 window.addEventListener('DOMContentLoaded', () => {
 
 });
@@ -165,16 +194,13 @@ function eanInText(text, ean) {
 }
 
 async function launchSearch() {
-  const query = document.getElementById('query').value.trim();
+  const query = selectedRef;
   const ean = '';
   const apiKey = TAVILY_API_KEY;
   const out = document.getElementById('results');
   const btn = document.getElementById('searchBtn');
 
-  if (!query && !ean) {
-    document.getElementById('ean').focus();
-    return;
-  }
+  if (!query) return;
   if (!apiKey || apiKey === '__TAVILY_KEY__') {
     alert('Clé Tavily non configurée. Ajoute TAVILY_API_KEY dans les secrets GitHub.');
     return;
