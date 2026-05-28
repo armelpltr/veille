@@ -182,46 +182,39 @@ window.addEventListener('DOMContentLoaded', () => {
 
 });
 
-async function fetchLiveLMPrice(url) {
+async function fetchLiveLMPrice(url, apiKey) {
   try {
-    const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-    const res = await fetch(proxy);
-    if (!res.ok) return null;
-    const html = await res.text();
-
-    // 1. JSON-LD : cherche le bloc "Offer" avec priceCurrency EUR
-    const jsonLdBlocks = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi) || [];
-    for (const block of jsonLdBlocks) {
+    let extractData = null;
+    for (const proxy of PROXIES) {
       try {
-        const json = JSON.parse(block.replace(/<\/?script[^>]*>/gi, ''));
-        const findPrice = (obj) => {
-          if (!obj || typeof obj !== 'object') return null;
-          if (obj.priceCurrency === 'EUR' && obj.price) {
-            const p = parseFloat(String(obj.price).replace(',','.'));
-            if (p > 5 && p < 2000) return p;
-          }
-          for (const v of Object.values(obj)) {
-            const r = findPrice(v);
-            if (r) return r;
-          }
-          return null;
-        };
-        const p = findPrice(json);
-        if (p) return p;
-      } catch(e) {}
+        const res = await fetch(proxy("https://api.tavily.com/extract"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ api_key: apiKey, urls: [url] })
+        });
+        if (res.ok) { extractData = await res.json(); break; }
+      } catch(e) { continue; }
     }
+    if (!extractData || !extractData.results || !extractData.results[0]) return null;
+    const text = extractData.results[0].raw_content || '';
 
-    // 2. Meta tag og:price
-    const metaMatch = html.match(/product:price:amount[^>]*content="([\d.,]+)"/);
-    if (metaMatch) {
-      const p = parseFloat(metaMatch[1].replace(',', '.'));
+    // "Vendu XX,XX €" — prix de vente principal LM
+    const venduMatch = text.match(/Vendu\s+(\d+)\s*[,.]\s*(\d{2})\s*€/);
+    if (venduMatch) {
+      const p = parseFloat(venduMatch[1] + '.' + venduMatch[2]);
       if (p > 5 && p < 2000) return p;
     }
 
-    // 3. Pattern "Vendu XX,XX €" dans le texte (prix principal LM)
-    const venduMatch = html.match(/Vendu\s+([\d]+[\s,.]?[\d]{2})\s*€/);
-    if (venduMatch) {
-      const p = parseFloat(venduMatch[1].replace(/[\s]/g,'').replace(',','.'));
+    // Prix dans les balises JSON-LD (priceCurrency EUR)
+    const offerMatch = text.match(/"priceCurrency"\s*:\s*"EUR"[^}]*"price"\s*:\s*"?([\d.]+)"?/);
+    if (!offerMatch) {
+      const offerMatch2 = text.match(/"price"\s*:\s*"?([\d.]+)"?[^}]*"priceCurrency"\s*:\s*"EUR"/);
+      if (offerMatch2) {
+        const p = parseFloat(offerMatch2[1]);
+        if (p > 5 && p < 2000) return p;
+      }
+    } else {
+      const p = parseFloat(offerMatch[1]);
       if (p > 5 && p < 2000) return p;
     }
 
@@ -362,7 +355,7 @@ async function launchSearch() {
     // Fetch prix live sur les pages LM
     out.innerHTML = `<div class="loading"><div class="spinner"></div><br>Vérification des prix en direct...</div>`;
     await Promise.all(products.map(async p => {
-      const live = await fetchLiveLMPrice(p.url);
+      const live = await fetchLiveLMPrice(p.url, apiKey);
       if (live) p.price = live;
     }));
 
