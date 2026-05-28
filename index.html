@@ -232,7 +232,7 @@ async function fetchPriceSerper(query) {
         "X-API-KEY": SERPER_API_KEY
       },
       body: JSON.stringify({
-        q: `"${query}" "leroy merlin" prix`,
+        q: `"${query}" leroymerlin.fr prix`,
         gl: "fr",
         hl: "fr",
         num: 10
@@ -240,27 +240,26 @@ async function fetchPriceSerper(query) {
     });
     if (!res.ok) return null;
     const data = await res.json();
-    const results = [...(data.organic || []), ...(data.shopping || [])];
+    const results = (data.organic || []).filter(r => (r.link||'').includes('leroymerlin.fr'));
 
-    // Cherche "Vendu XX,XX €" dans les snippets — pattern exclusif LM
+    // Collecte tous les prix > 10€ trouvés dans les snippets LM .fr
+    const allFound = [];
     for (const r of results) {
-      const text = (r.snippet || r.price || '') + ' ' + (r.title || '');
-      const vendu = text.match(/Vendu\s+(\d+)\s*[,.]\s*(\d{2})\s*€/);
-      if (vendu) {
-        const p = parseFloat(vendu[1] + '.' + vendu[2]);
-        if (p > 5 && p < 2000) return { price: p, source: r.link || r.source };
-      }
+      const snippet = r.snippet || '';
+      const prices = extractAllPrices(snippet).filter(p => p > 10 && p < 2000);
+      prices.forEach(p => allFound.push({ price: p, source: r.link }));
     }
 
-    // Fallback : prix le plus haut dans les snippets LM (> livraison)
-    const lmResults = results.filter(r => (r.link || '').includes('leroymerlin'));
-    for (const r of lmResults) {
-      const prices = extractAllPrices(r.snippet || '');
-      const valid = prices.filter(p => p > 5);
-      if (valid.length) return { price: Math.max(...valid), source: r.link };
-    }
+    if (!allFound.length) return null;
 
-    return null;
+    // Retourne le prix le plus fréquent, sinon la médiane
+    const freq = {};
+    allFound.forEach(({price}) => freq[price] = (freq[price]||0) + 1);
+    const sorted = Object.entries(freq).sort((a,b) => b[1]-a[1] || b[0]-a[0]);
+    const bestPrice = parseFloat(sorted[0][0]);
+    const bestSource = allFound.find(r => r.price === bestPrice)?.source;
+    return { price: bestPrice, source: bestSource };
+
   } catch(e) { return null; }
 }
 
