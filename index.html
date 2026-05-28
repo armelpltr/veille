@@ -239,12 +239,19 @@ async function launchSearch() {
       <span class="results-count">${lmPages.length} page(s) — leroymerlin.fr</span>
     </div>`;
 
-    // Garde uniquement la page dont la ref est dans le titre ou l'URL
+    // Garde la page dont le titre correspond le mieux à la ref exacte
     const refNorm = query.replace(/-/g,'').toLowerCase();
-    const bestPage = lmPages.find(p =>
-      p.title?.toLowerCase().replace(/-/g,'').includes(refNorm) ||
-      p.url?.toLowerCase().replace(/-/g,'').includes(refNorm)
-    ) || lmPages[0] || {
+    const scored = lmPages.map(p => {
+      const titleNorm = (p.title||'').toLowerCase().replace(/-/g,'');
+      const urlNorm   = (p.url||'').toLowerCase().replace(/-/g,'');
+      const hasRef    = titleNorm.includes(refNorm) || urlNorm.includes(refNorm);
+      // Pénalise si le titre contient "-f " ou "made in france" (variante)
+      const isFrVariant = /made.in.france|p12123f/i.test((p.title||'')+(p.url||''));
+      const score = hasRef ? (isFrVariant ? 1 : 2) : 0;
+      return { ...p, score };
+    }).sort((a,b) => b.score - a.score);
+
+    const bestPage = scored[0] || {
       title: `Sécateur à lame franche BAHCO PRADINES ${query}`,
       url: serperResult?.url || '',
       content: ''
