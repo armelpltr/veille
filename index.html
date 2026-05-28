@@ -239,11 +239,18 @@ async function launchSearch() {
       <span class="results-count">${lmPages.length} page(s) — leroymerlin.fr</span>
     </div>`;
 
-    const pages = lmPages.length ? lmPages : [{
+    // Garde uniquement la page dont la ref est dans le titre ou l'URL
+    const refNorm = query.replace(/-/g,'').toLowerCase();
+    const bestPage = lmPages.find(p =>
+      p.title?.toLowerCase().replace(/-/g,'').includes(refNorm) ||
+      p.url?.toLowerCase().replace(/-/g,'').includes(refNorm)
+    ) || lmPages[0] || {
       title: `Sécateur à lame franche BAHCO PRADINES ${query}`,
       url: serperResult?.url || '',
       content: ''
-    }];
+    };
+
+    const pages = [bestPage];
 
     pages.forEach((p, i) => {
       const name = p.title?.replace(/\s*[|–-]\s*Leroy Merlin.*/i,'').trim() || query;
