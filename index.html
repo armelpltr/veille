@@ -238,9 +238,13 @@ async function fetchPriceSerper(query) {
         num: 10
       })
     });
+    console.log('[Serper] HTTP status:', res.status);
     if (!res.ok) return null;
     const data = await res.json();
+    console.log('[Serper] total organic:', (data.organic||[]).length);
     const results = (data.organic || []).filter(r => (r.link||'').includes('leroymerlin.fr'));
+    console.log('[Serper] LM results:', results.length, results.map(r => r.link));
+    results.forEach(r => console.log('[Serper] snippet:', r.snippet));
 
     // Collecte tous les prix > 10€ trouvés dans les snippets LM .fr
     const allFound = [];
