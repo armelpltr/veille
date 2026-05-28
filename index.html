@@ -167,6 +167,7 @@
 
 <script>
 
+const TAVILY_API_KEY = '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';
 
 let selectedRef = 'P121-23';
 
@@ -201,8 +202,8 @@ async function launchSearch() {
   const btn = document.getElementById('searchBtn');
 
   if (!query) return;
-  if (!apiKey || apiKey === '__TAVILY_KEY__') {
-    alert('Clé Tavily non configurée. Ajoute TAVILY_API_KEY dans les secrets GitHub.');
+  if (!apiKey || apiKey.startsWith('__')) {
+    alert('Clé Tavily non configurée.');
     return;
   }
   btn.disabled = true;
@@ -359,7 +360,6 @@ async function launchSearch() {
   }
 }
 
-document.getElementById('query').addEventListener('keydown', e => { if (e.key === 'Enter') launchSearch(); });
 </script>
 </body>
 </html>
