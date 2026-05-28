@@ -246,7 +246,8 @@ async function launchSearch() {
       const urlNorm   = (p.url||'').toLowerCase().replace(/-/g,'');
       const hasRef    = titleNorm.includes(refNorm) || urlNorm.includes(refNorm);
       // Pénalise si le titre contient "-f " ou "made in france" (variante)
-      const isFrVariant = /made.in.france|p12123f/i.test((p.title||'')+(p.url||''));
+      const combined = ((p.title||'')+(p.url||'')).replace(/-/g,'').toLowerCase();
+      const isFrVariant = /madein france|p12123f/.test(combined);
       const score = hasRef ? (isFrVariant ? 1 : 2) : 0;
       return { ...p, score };
     }).sort((a,b) => b.score - a.score);
