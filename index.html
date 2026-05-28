@@ -198,73 +198,56 @@ async function launchSearch() {
 
   btn.disabled = true;
   btn.textContent = 'Recherche en cours...';
-  out.innerHTML = '<div class="loading"><div class="spinner"></div><br>Recherche sur Leroy Merlin...</div>';
+  out.innerHTML = '<div class="loading"><div class="spinner"></div><br>Recherche en cours...</div>';
 
   try {
-    // Étape 1 : Tavily → URLs LM
-    const lmPages = await getUrlsFromTavily(query);
-    console.log('[App] LM pages found:', lmPages.length);
+    const sites = [];
+    if (document.getElementById('lm')?.checked)     sites.push({domain:'leroymerlin.fr', label:'Leroy Merlin'});
+    if (document.getElementById('botanic')?.checked) sites.push({domain:'botanic.com',    label:'Botanic'});
 
-    // Étape 2 : Serper → prix réel Google
-    out.innerHTML = '<div class="loading"><div class="spinner"></div><br>Récupération du prix via Google...</div>';
-    const serperResult = await getPriceFromSerper(query);
-    console.log('[App] Serper price result:', serperResult);
-
-    if (!lmPages.length && !serperResult) {
-      out.innerHTML = `<div class="error-box">Aucun résultat trouvé pour "${query}" sur leroymerlin.fr.</div>`;
+    if (!sites.length) {
+      out.innerHTML = '<div class="error-box">Sélectionne au moins un site.</div>';
       return;
     }
 
-    // Construction des cartes
-    const price = serperResult?.price || null;
-    let html = '';
+    const siteResults = await Promise.all(sites.map(async site => {
+      const [pages, serperResult] = await Promise.all([
+        getUrlsFromTavily(query, site.domain),
+        getPriceFromSerper(query, site.domain)
+      ]);
+      const refNorm = query.replace(/-/g,'').toLowerCase();
+      const scored = pages.map(p => {
+        const combined = ((p.title||'')+(p.url||'')).replace(/-/g,'').toLowerCase();
+        const hasRef = combined.includes(refNorm);
+        const isFrVariant = /madeinfrancep|p12123f/.test(combined);
+        return { ...p, score: hasRef ? (isFrVariant ? 1 : 2) : 0 };
+      }).sort((a,b) => b.score - a.score);
+      return { site, page: scored[0] || null, price: serperResult?.price || null };
+    }));
 
-    if (lmPages.length > 1) {
-      html += `<div class="summary">
-        <div class="stat"><div class="stat-label">Prix LM</div><div class="stat-value" style="color:var(--accent)">${price ? price.toFixed(2)+' €' : '—'}</div></div>
-        <div class="stat"><div class="stat-label">Pages trouvées</div><div class="stat-value">${lmPages.length}</div></div>
-        <div class="stat"><div class="stat-label">Marketplace exclues</div><div class="stat-value" style="color:var(--muted)">✕</div></div>
-      </div>`;
+    const validResults = siteResults.filter(r => r.page || r.price);
+    if (!validResults.length) {
+      out.innerHTML = `<div class="error-box">Aucun résultat trouvé pour "${query}".</div>`;
+      return;
     }
 
-
-
-    // Garde la page dont le titre correspond le mieux à la ref exacte
-    const refNorm = query.replace(/-/g,'').toLowerCase();
-    const scored = lmPages.map(p => {
-      const titleNorm = (p.title||'').toLowerCase().replace(/-/g,'');
-      const urlNorm   = (p.url||'').toLowerCase().replace(/-/g,'');
-      const hasRef    = titleNorm.includes(refNorm) || urlNorm.includes(refNorm);
-      // Pénalise si le titre contient "-f " ou "made in france" (variante)
-      const combined = ((p.title||'')+(p.url||'')).replace(/-/g,'').toLowerCase();
-      const isFrVariant = /madein france|p12123f/.test(combined);
-      const score = hasRef ? (isFrVariant ? 1 : 2) : 0;
-      return { ...p, score };
-    }).sort((a,b) => b.score - a.score);
-
-    const bestPage = scored[0] || {
-      title: `Sécateur à lame franche BAHCO PRADINES ${query}`,
-      url: serperResult?.url || '',
-      content: ''
-    };
-
-    const pages = [bestPage];
-
-    pages.forEach((p, i) => {
-      const name = p.title?.replace(/\s*[|–-]\s*Leroy Merlin.*/i,'').trim() || query;
-      const snippet = (p.content||'').substring(0,180);
-      html += `<div class="card" style="animation-delay:${i*.06}s">
+    let html = '';
+    validResults.forEach((r, i) => {
+      const p = r.page;
+      const name = p?.title?.replace(/\s*[|–-]\s*(Leroy Merlin|Botanic).*/i,'').trim() || query;
+      const snippet = (p?.content||'').substring(0,180);
+      html += `<div class="card" style="animation-delay:${i*.08}s">
         <div class="card-top">
           <div style="flex:1;min-width:0">
-            <span class="store-badge">Leroy Merlin</span>
+            <span class="store-badge">${r.site.label}</span>
             <div class="product-name">${name}</div>
             ${snippet ? `<div class="product-snippet">${snippet}…</div>` : ''}
           </div>
-          <div class="price">${price ? price.toFixed(2)+' €' : '—'}</div>
+          <div class="price">${r.price ? r.price.toFixed(2)+' €' : '—'}</div>
         </div>
         <div class="card-bottom">
-          <span class="tag lm-direct">LM Direct</span>
-          ${p.url ? `<a class="link-btn" href="${p.url}" target="_blank">↗ voir le produit</a>` : ''}
+          <span class="tag lm-direct">${r.site.label}</span>
+          ${p?.url ? `<a class="link-btn" href="${p.url}" target="_blank">↗ voir le produit</a>` : ''}
         </div>
       </div>`;
     });
