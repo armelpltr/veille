@@ -340,6 +340,7 @@ async function launchSearch() {
       return {
         product_name: r.title.replace(/\s*[\|–-]\s*Leroy Merlin.*$/i, '').trim(),
         price: extractPrice(content),
+        allPrices: extractAllPrices(content),
         snippet: content.substring(0, 200).trim(),
         url: r.url,
         ean_match: eanInText(content, ean) || eanInText(r.title, ean),
@@ -352,13 +353,6 @@ async function launchSearch() {
     // Priorité : ref dans titre/URL + vendu par LM direct
     const refMatchDirect = products.filter(p => p.ref_match && p.is_lm_direct);
     const refMatchAll   = products.filter(p => p.ref_match);
-    // Fetch prix live sur les pages LM
-    out.innerHTML = `<div class="loading"><div class="spinner"></div><br>Vérification des prix en direct...</div>`;
-    await Promise.all(products.map(async p => {
-      const live = await fetchLiveLMPrice(p.url, apiKey);
-      if (live) p.price = live;
-    }));
-
     const lmDirectProducts = products.filter(p => p.is_lm_direct);
     const eanMatches = refMatchDirect.filter(p => p.ean_match);
 
@@ -369,7 +363,7 @@ async function launchSearch() {
       lmDirectProducts.length > 0 ? lmDirectProducts :
       products;
 
-    const prices = displayProducts.map(p => p.price).filter(Boolean);
+    const prices = displayProducts.map(p => p.price).filter(Boolean); // prix = max trouvé (hors livraison)
     const minPrice = prices.length ? Math.min(...prices) : null;
     const maxPrice = prices.length ? Math.max(...prices) : null;
     const avgPrice = prices.length ? prices.reduce((a,b) => a+b,0) / prices.length : null;
@@ -422,7 +416,17 @@ async function launchSearch() {
             ${p.snippet ? `<div class="product-snippet">${p.snippet}…</div>` : ''}
           </div>
           <div class="price-block">
-            <div class="price ${p.price ? 'found' : ''}">${p.price ? p.price.toFixed(2) + ' €' : '—'}</div>
+            ${p.allPrices && p.allPrices.length > 1
+              ? `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                  ${p.allPrices.map(pr => `
+                    <div style="font-family:var(--mono);font-size:${pr === Math.max(...p.allPrices) ? '22' : '14'}px;
+                      color:${pr === Math.max(...p.allPrices) ? 'var(--accent)' : 'var(--muted)'};
+                      font-weight:${pr === Math.max(...p.allPrices) ? '500' : '400'}">
+                      ${pr.toFixed(2)} €
+                    </div>`).join('')}
+                 </div>`
+              : `<div class="price ${p.price ? 'found' : ''}">${p.price ? p.price.toFixed(2) + ' €' : '—'}</div>`
+            }
           </div>
         </div>
         <div class="card-bottom">
