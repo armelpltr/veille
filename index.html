@@ -182,6 +182,29 @@ window.addEventListener('DOMContentLoaded', () => {
 
 });
 
+async function fetchLiveLMPrice(url) {
+  try {
+    const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxy);
+    if (!res.ok) return null;
+    const html = await res.text();
+    // JSON-LD structured data
+    const jsonLdMatch = html.match(/"price"\s*:\s*"?([\d.,]+)"?/);
+    if (jsonLdMatch) {
+      const p = parseFloat(jsonLdMatch[1].replace(',', '.'));
+      if (p > 1 && p < 2000) return p;
+    }
+    // Meta og:price
+    const metaMatch = html.match(/product:price:amount[^>]*content="([\d.,]+)"/);
+    if (metaMatch) {
+      const p = parseFloat(metaMatch[1].replace(',', '.'));
+      if (p > 1 && p < 2000) return p;
+    }
+    // Texte brut
+    return extractPrice(html.substring(0, 10000));
+  } catch(e) { return null; }
+}
+
 function extractPrice(text) {
   const t = text.replace(/\u00a0/g, ' ');
   // Gère : "29,90 €" / "29.90€" / "29 ,90 €" / "29 , 90 €"
@@ -227,11 +250,12 @@ async function launchSearch() {
 
     const body = JSON.stringify({
       api_key: apiKey,
-      query: `"${searchTerm}" "leroy merlin" prix`,
-      search_depth: "advanced",
+      query: `"${searchTerm}" leroymerlin prix`,
+      search_depth: "basic",
       include_answer: false,
       include_raw_content: false,
-      max_results: 10
+      include_domains: ["leroymerlin.fr"],
+      max_results: 5
     });
 
     // Étape 1 : recherche pour trouver l'URL du bon produit
@@ -279,15 +303,7 @@ async function launchSearch() {
         }
       } catch(e) { /* fallback sur cache */ }
     }
-    // Priorité aux pages LM directes, sinon pages mentionnant LM avec prix
-    const allResults = data.results || [];
-    const lmDirect = allResults.filter(r => r.url.includes('leroymerlin.fr'));
-    const lmMentioned = allResults.filter(r =>
-      !r.url.includes('leroymerlin.fr') &&
-      /leroy.?merlin/i.test(r.content || '') &&
-      extractPrice(r.content || '') !== null
-    );
-    const results = lmDirect.length > 0 ? lmDirect : lmMentioned;
+    const results = (data.results || []).filter(r => r.url.includes('leroymerlin.fr'));
 
     if (results.length === 0) {
       out.innerHTML = `<div class="empty-state">Aucun résultat sur leroymerlin.fr pour "${searchTerm}".<br><span style="font-size:11px;margin-top:8px;display:block">Vérifie la référence ou l'EAN.</span></div>`;
@@ -297,7 +313,7 @@ async function launchSearch() {
     const refNorm = query.replace(/-/g, '').toLowerCase();
 
     const products = results.map(r => {
-      const content = (r.content || '');
+      const content = (r.raw_content || r.content || '');
       const titleNorm = r.title.toLowerCase().replace(/-/g, '');
       const urlNorm = r.url.toLowerCase().replace(/-/g, '');
       const isLMDirect = /vendu par leroy merlin/i.test(content);
@@ -319,6 +335,13 @@ async function launchSearch() {
     // Priorité : ref dans titre/URL + vendu par LM direct
     const refMatchDirect = products.filter(p => p.ref_match && p.is_lm_direct);
     const refMatchAll   = products.filter(p => p.ref_match);
+    // Fetch prix live sur les pages LM
+    out.innerHTML = `<div class="loading"><div class="spinner"></div><br>Vérification des prix en direct...</div>`;
+    await Promise.all(products.map(async p => {
+      const live = await fetchLiveLMPrice(p.url);
+      if (live) p.price = live;
+    }));
+
     const lmDirectProducts = products.filter(p => p.is_lm_direct);
     const eanMatches = refMatchDirect.filter(p => p.ean_match);
 
