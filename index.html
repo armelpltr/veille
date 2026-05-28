@@ -95,13 +95,6 @@
   .stat-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
   .stat-value { font-family: var(--mono); font-size: 20px; font-weight: 500; }
   .stat-value.green { color: var(--success); } .stat-value.red { color: var(--danger); } .stat-value.neutral { color: var(--text); }
-  .api-section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; }
-  .api-section summary { font-family: var(--mono); font-size: 11px; color: var(--muted); cursor: pointer; text-transform: uppercase; letter-spacing: 1px; list-style: none; display: flex; align-items: center; gap: 8px; user-select: none; }
-  .api-section summary::before { content: '▶'; font-size: 8px; transition: transform 0.15s; }
-  .api-section[open] summary::before { transform: rotate(90deg); }
-  .api-section input { margin-top: 12px; background: var(--bg); }
-  .api-note { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 8px; }
-  .api-note a { color: var(--accent); }
   .divider { height: 1px; background: var(--border); margin: 28px 0; }
 </style>
 </head>
@@ -121,11 +114,7 @@
     <p class="subtitle">// recherche automatique par référence · EAN</p>
   </header>
 
-  <details class="api-section" id="apiSection">
-    <summary>Clé API Tavily</summary>
-    <input type="password" id="apiKey" placeholder="tvly-..." />
-    <p class="api-note">Gratuit jusqu'à 1000 recherches/mois → <a href="https://tavily.com" target="_blank">tavily.com</a>. Clé stockée localement.</p>
-  </details>
+
 
   <div class="field">
     <label>Référence produit</label>
@@ -157,13 +146,9 @@
 </div>
 
 <script>
-const STORAGE_KEY = 'bahco_tavily_key';
+const TAVILY_API_KEY = '__TAVILY_KEY__';
 
 window.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) document.getElementById('apiKey').value = saved;
-  else document.getElementById('apiSection').open = true;
-  document.getElementById('apiKey').addEventListener('change', e => localStorage.setItem(STORAGE_KEY, e.target.value.trim()));
 
 });
 
@@ -182,7 +167,7 @@ function eanInText(text, ean) {
 async function launchSearch() {
   const query = document.getElementById('query').value.trim();
   const ean = '';
-  const apiKey = document.getElementById('apiKey').value.trim() || localStorage.getItem(STORAGE_KEY) || '';
+  const apiKey = TAVILY_API_KEY;
   const out = document.getElementById('results');
   const btn = document.getElementById('searchBtn');
 
@@ -190,9 +175,10 @@ async function launchSearch() {
     document.getElementById('ean').focus();
     return;
   }
-  if (!apiKey) { document.getElementById('apiSection').open = true; document.getElementById('apiKey').focus(); return; }
-
-  localStorage.setItem(STORAGE_KEY, apiKey);
+  if (!apiKey || apiKey === '__TAVILY_KEY__') {
+    alert('Clé Tavily non configurée. Ajoute TAVILY_API_KEY dans les secrets GitHub.');
+    return;
+  }
   btn.disabled = true;
   btn.textContent = 'Recherche en cours...';
 
