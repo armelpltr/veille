@@ -212,6 +212,7 @@ async function launchSearch() {
       query: `"${searchTerm}" leroymerlin prix`,
       search_depth: "advanced",
       include_answer: false,
+      include_raw_content: true,
       include_domains: ["leroymerlin.fr"],
       max_results: 8
     });
@@ -239,7 +240,7 @@ async function launchSearch() {
     const refNorm = query.replace(/-/g, '').toLowerCase();
 
     const products = results.map(r => {
-      const content = r.content || '';
+      const content = (r.raw_content || r.content || '').substring(0, 3000);
       const titleNorm = r.title.toLowerCase().replace(/-/g, '');
       const urlNorm = r.url.toLowerCase().replace(/-/g, '');
       const isLMDirect = /vendu par leroy merlin/i.test(content);
