@@ -204,25 +204,31 @@ async function launchSearch() {
     const PROXIES = [
       u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
       u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-      u => u  // tentative directe en dernier recours
+      u => u
     ];
 
     const body = JSON.stringify({
-        api_key: apiKey,
-        query: `"${searchTerm}" leroymerlin prix`,
-        search_depth: "advanced",
-        include_answer: false,
-        include_domains: ["leroymerlin.fr"],
-        max_results: 8
-      })
+      api_key: apiKey,
+      query: `"${searchTerm}" leroymerlin prix`,
+      search_depth: "advanced",
+      include_answer: false,
+      include_domains: ["leroymerlin.fr"],
+      max_results: 8
     });
 
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.message || err.detail || `Erreur Tavily ${response.status}`);
+    let data = null;
+    for (const proxy of PROXIES) {
+      try {
+        const res = await fetch(proxy(TAVILY_URL), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body
+        });
+        if (res.ok) { data = await res.json(); break; }
+      } catch(e) { continue; }
     }
 
-    const data = await response.json();
+    if (!data) throw new Error("Impossible de joindre l'API Tavily. Vérifie ta connexion.");
     const results = (data.results || []).filter(r => r.url.includes('leroymerlin.fr'));
 
     if (results.length === 0) {
