@@ -45,6 +45,10 @@ label{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);te
 .store-badge{font-family:var(--mono);font-size:10px;font-weight:500;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px;display:inline-block;margin-bottom:6px}
 .store-badge.lm{background:rgba(0,125,58,.2);color:var(--success)}
 .store-badge.botanic{background:rgba(129,199,132,.15);color:#81c784}
+.store-badge.amazon{background:rgba(255,153,0,.15);color:#ff9800}
+.store-badge.manomano{background:rgba(30,136,229,.15);color:#42a5f5}
+.store-badge.amazon{background:rgba(255,153,0,.15);color:#ff9900}
+.store-badge.manomano{background:rgba(0,164,224,.15);color:#00a4e0}
 .product-name{font-size:15px;font-weight:600;line-height:1.3}
 .product-found-name{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px}
 .price{font-family:var(--mono);font-size:26px;font-weight:500;color:var(--accent);white-space:nowrap}
@@ -100,14 +104,24 @@ const PRODUCTS = [
     name: 'Sécateur lame franche\nBAHCO PRADINES · Ø 25 mm',
     sites: {
       lm: {
-        url:        'https://www.leroymerlin.fr/produits/secateur-bahco-pradines-p121-23-f-25-mm-made-in-france-75851613.html',
-        shopQuery:  'Sécateur Bahco Pradines P121-23-F 25mm Made in France Leroy Merlin',
-        source:     'Leroy Merlin'
+        url:       'https://www.leroymerlin.fr/produits/secateur-bahco-pradines-p121-23-f-25-mm-made-in-france-75851613.html',
+        shopQuery: 'Sécateur Bahco Pradines P121-23-F 25mm Made in France Leroy Merlin',
+        source:    'Leroy Merlin'
       },
       botanic: {
-        url:        'https://www.botanic.com/produit/1157801/secateur-de-jardinier-gaucher-coloris-orange-25-mm-bahco-14-5-x-3-x-23-cm.html',
-        shopQuery:  'sécateur gaucher Bahco 25mm orange botanic',
-        source:     'Botanic'
+        url:       'https://www.botanic.com/produit/1157801/secateur-de-jardinier-gaucher-coloris-orange-25-mm-bahco-14-5-x-3-x-23-cm.html',
+        shopQuery: 'sécateur gaucher Bahco 25mm orange botanic',
+        source:    'Botanic'
+      },
+      amazon: {
+        url:       'https://www.amazon.fr/s?k=Bahco+P121-23-F',
+        shopQuery: 'Bahco P121-23-F sécateur',
+        source:    'Amazon'
+      },
+      manomano: {
+        url:       'https://www.manomano.fr/search/bahco+p121-23',
+        shopQuery: 'Bahco P121-23 sécateur ManoMano',
+        source:    'ManoMano'
       }
     }
   }
@@ -115,11 +129,14 @@ const PRODUCTS = [
 ];
 
 const SITES = [
-  { id: 'lm',      label: 'Leroy Merlin', badge: 'lm' },
-  { id: 'botanic', label: 'Botanic',       badge: 'botanic' }
+  { id: 'lm',       label: 'Leroy Merlin', badge: 'lm' },
+  { id: 'botanic',  label: 'Botanic',      badge: 'botanic' },
+  { id: 'amazon',   label: 'Amazon',       badge: 'amazon' },
+  { id: 'manomano', label: 'ManoMano',     badge: 'manomano' }
 ];
 
-const SERPER_KEY = '11912ba8e1e1203880fb09fd134e28fd3c9d4de5';
+const SERPER_KEY  = '11912ba8e1e1203880fb09fd134e28fd3c9d4de5';
+const TAVILY_KEY  = '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';
 // ═══════════════════════════════════════════════════
 
 let selectedRef = PRODUCTS[0].ref;
@@ -160,6 +177,40 @@ function parsePrice(str) {
   return v > 1 && v < 2000 ? v : null;
 }
 
+// Idealo via Tavily — extrait le prix d'un marketplace spécifique
+async function fetchIdealoPrice(idealoQuery, marker) {
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        api_key: TAVILY_KEY,
+        query: idealoQuery,
+        search_depth: 'advanced',
+        include_domains: ['idealo.fr'],
+        max_results: 2
+      })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const result = (data.results||[]).find(r => r.url.includes('idealo.fr'));
+    if (!result) return null;
+    const content = result.content || '';
+    // Cherche le prix dans le bloc contenant le marker (amazon/manomano)
+    const idx = content.toLowerCase().indexOf(marker.toLowerCase());
+    if (idx === -1) return null;
+    // Cherche un prix dans les 300 chars avant le marker
+    const before = content.substring(Math.max(0, idx - 300), idx);
+    const priceMatch = before.match(/(\d{2,3}),(\d{2})\s*€(?!\s*livraison)/);
+    if (priceMatch) return parseFloat(priceMatch[1]+'.'+priceMatch[2]);
+    // Ou dans les 200 chars après
+    const after = content.substring(idx, idx + 200);
+    const priceMatch2 = after.match(/(\d{2,3}),(\d{2})\s*€(?!\s*livraison)/);
+    if (priceMatch2) return parseFloat(priceMatch2[1]+'.'+priceMatch2[2]);
+    return null;
+  } catch(e) { return null; }
+}
+
 // Google Shopping via Serper
 async function fetchShoppingPrice(shopQuery, source) {
   try {
@@ -173,10 +224,15 @@ async function fetchShoppingPrice(shopQuery, source) {
     const items = (data.shopping || []).filter(r =>
       (r.source||'').toLowerCase().includes(source.toLowerCase())
     );
-    if (!items.length) return null;
+    // Pour Amazon, exclure les vendeurs tiers marketplace
+    const directItems = source === 'Amazon'
+      ? items.filter(r => !(r.source||'').toLowerCase().includes('seller'))
+      : items;
+    const finalItems = directItems.length ? directItems : items;
+    if (!finalItems.length) return null;
     // Premier résultat de la bonne enseigne
-    const price = parsePrice(items[0].price);
-    return price ? { price, title: items[0].title, link: items[0].link } : null;
+    const price = parsePrice(finalItems[0].price);
+    return price ? { price, title: finalItems[0].title, link: finalItems[0].link } : null;
   } catch(e) { return null; }
 }
 
@@ -199,7 +255,13 @@ async function launchSearch() {
     const results = await Promise.all(selectedSites.map(async site => {
       const cfg = product.sites[site.id];
       if (!cfg) return { site, cfg: null, result: null };
-      const result = await fetchShoppingPrice(cfg.shopQuery, cfg.source);
+      let result = null;
+      if (cfg.type === 'idealo') {
+        const price = await fetchIdealoPrice(cfg.idealoQuery, cfg.marker);
+        if (price) result = { price, title: null, link: cfg.url };
+      } else {
+        result = await fetchShoppingPrice(cfg.shopQuery, cfg.source);
+      }
       return { site, cfg, result };
     }));
 
