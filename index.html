@@ -222,6 +222,19 @@ async function fetchLiveLMPrice(url, apiKey) {
   } catch(e) { return null; }
 }
 
+function extractAllPrices(text) {
+  const t = text.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
+  const re = /(\d{1,4})\s*[,.]\s*(\d{2})\s*€|(\d{1,4})\s*€(?![\d,.])/g;
+  const seen = new Set();
+  const prices = [];
+  let m;
+  while ((m = re.exec(t)) !== null) {
+    const val = m[3] ? parseFloat(m[3]) : parseFloat(m[1] + '.' + m[2]);
+    if (val > 1 && val < 2000 && !seen.has(val)) { seen.add(val); prices.push(val); }
+  }
+  return prices;
+}
+
 function extractPrice(text) {
   const t = text.replace(/\u00a0/g, ' ');
   // Gère : "29,90 €" / "29.90€" / "29 ,90 €" / "29 , 90 €"
