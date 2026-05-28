@@ -146,7 +146,7 @@ async function getUrlsFromTavily(query, domain) {
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         api_key: TAVILY_KEY,
-        query: `"${query}" ${domain.replace('.fr','')} prix`,
+        query: `"${query}" "${domain.replace('.fr','')}" prix`,
         search_depth: 'basic',
         include_domains: [domain],
         max_results: 5
@@ -222,7 +222,9 @@ async function launchSearch() {
         const isFrVariant = /madeinfrancep|p12123f/.test(combined);
         return { ...p, score: hasRef ? (isFrVariant ? 1 : 2) : 0 };
       }).sort((a,b) => b.score - a.score);
-      return { site, page: scored[0] || null, price: serperResult?.price || null };
+      // Prend le meilleur scoré, sinon le premier disponible
+      const bestPage = scored.find(p => p.score > 0) || scored[0] || null;
+      return { site, page: bestPage, price: serperResult?.price || null };
     }));
 
     const validResults = siteResults.filter(r => r.page || r.price);
@@ -234,7 +236,7 @@ async function launchSearch() {
     let html = '';
     validResults.forEach((r, i) => {
       const p = r.page;
-      const name = p?.title?.replace(/\s*[|–-]\s*(Leroy Merlin|Botanic).*/i,'').trim() || query;
+      const name = p?.title?.replace(/\s*[|\u2013-]\s*(Leroy Merlin|Botanic).*/i,'').trim() || query;
       const snippet = (p?.content||'').substring(0,180);
       html += `<div class="card" style="animation-delay:${i*.08}s">
         <div class="card-top">
