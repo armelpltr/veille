@@ -101,6 +101,7 @@ label{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);te
     <label>Sites à consulter</label>
     <div class="sites-grid">
       <div class="site-chip"><input type="checkbox" id="lm" checked><label for="lm"><span class="dot"></span>Leroy Merlin</label></div>
+      <div class="site-chip"><input type="checkbox" id="botanic"><label for="botanic"><span class="dot"></span>Botanic</label></div>
       <div class="site-chip"><input type="checkbox" id="casto" disabled><label for="casto" style="opacity:.4;cursor:default"><span class="dot"></span>Castorama <span style="font-size:9px">(bientôt)</span></label></div>
       <div class="site-chip"><input type="checkbox" id="amz" disabled><label for="amz" style="opacity:.4;cursor:default"><span class="dot"></span>Amazon <span style="font-size:9px">(bientôt)</span></label></div>
     </div>
@@ -137,60 +138,52 @@ function extractAllPrices(text) {
   return out;
 }
 
-async function getUrlsFromTavily(query) {
-  console.log('[Tavily] searching:', query);
+async function getUrlsFromTavily(query, domain) {
+  console.log('[Tavily] searching:', query, 'on', domain);
   try {
     const res = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         api_key: TAVILY_KEY,
-        query: `"${query}" leroymerlin prix`,
+        query: `"${query}" ${domain.replace('.fr','')} prix`,
         search_depth: 'basic',
-        include_domains: ['leroymerlin.fr'],
+        include_domains: [domain],
         max_results: 5
       })
     });
     const data = await res.json();
     console.log('[Tavily] results:', data.results?.length);
-    return (data.results || []).filter(r =>
-      r.url.includes('leroymerlin.fr') &&
-      /vendu par leroy merlin/i.test(r.content || '')
-    );
+    return (data.results || []).filter(r => r.url.includes(domain));
   } catch(e) {
     console.error('[Tavily] error:', e);
     return [];
   }
 }
 
-async function getPriceFromSerper(query) {
-  console.log('[Serper] searching:', query);
+async function getPriceFromSerper(query, domain) {
+  console.log('[Serper] searching:', query, 'on', domain);
   try {
     const res = await fetch('https://google.serper.dev/search', {
       method: 'POST',
       headers: {'Content-Type':'application/json','X-API-KEY': SERPER_KEY},
-      body: JSON.stringify({q: `"${query}" leroymerlin.fr prix`, gl:'fr', hl:'fr', num:10})
+      body: JSON.stringify({q: `"${query}" ${domain} prix`, gl:'fr', hl:'fr', num:10})
     });
-    console.log('[Serper] status:', res.status);
     if (!res.ok) return null;
     const data = await res.json();
-    const lmResults = (data.organic || []).filter(r => (r.link||'').includes('leroymerlin.fr'));
-    console.log('[Serper] LM results:', lmResults.length);
-    lmResults.forEach(r => console.log('[Serper] snippet:', r.snippet));
+    const results = (data.organic || []).filter(r => (r.link||'').includes(domain));
 
     const candidates = [];
-    for (const r of lmResults) {
+    for (const r of results) {
       const prices = extractAllPrices(r.snippet || '').filter(p => p > 10);
       candidates.push(...prices.map(p => ({price: p, url: r.link})));
     }
-    console.log('[Serper] price candidates:', candidates);
     if (!candidates.length) return null;
 
     const freq = {};
     candidates.forEach(({price}) => freq[price] = (freq[price]||0)+1);
     const best = Object.entries(freq).sort((a,b) => b[1]-a[1]||b[0]-a[0])[0];
     const bestPrice = parseFloat(best[0]);
-    console.log('[Serper] best price:', bestPrice);
     return {price: bestPrice, url: candidates.find(c => c.price===bestPrice)?.url};
   } catch(e) {
     console.error('[Serper] error:', e);
@@ -234,10 +227,7 @@ async function launchSearch() {
       </div>`;
     }
 
-    html += `<div class="results-header">
-      <span class="results-title">Résultats</span>
-      <span class="results-count">${lmPages.length} page(s) — leroymerlin.fr</span>
-    </div>`;
+
 
     // Garde la page dont le titre correspond le mieux à la ref exacte
     const refNorm = query.replace(/-/g,'').toLowerCase();
