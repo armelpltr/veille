@@ -235,6 +235,7 @@ async function launchSearch() {
       max_results: 8
     });
 
+    // Étape 1 : recherche pour trouver l'URL du bon produit
     let data = null;
     for (const proxy of PROXIES) {
       try {
@@ -248,6 +249,37 @@ async function launchSearch() {
     }
 
     if (!data) throw new Error("Impossible de joindre l'API Tavily. Vérifie ta connexion.");
+
+    // Étape 2 : extract live sur les URLs trouvées pour prix frais
+    const lmUrls = (data.results || [])
+      .filter(r => r.url.includes('leroymerlin.fr'))
+      .map(r => r.url)
+      .slice(0, 3);
+
+    if (lmUrls.length > 0) {
+      out.innerHTML = `<div class="loading"><div class="spinner"></div><br>Récupération des prix en direct...</div>`;
+      try {
+        let extractData = null;
+        const extractBody = JSON.stringify({ urls: lmUrls });
+        for (const proxy of PROXIES) {
+          try {
+            const res = await fetch(proxy("https://api.tavily.com/extract"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ api_key: apiKey, urls: lmUrls })
+            });
+            if (res.ok) { extractData = await res.json(); break; }
+          } catch(e) { continue; }
+        }
+        if (extractData && extractData.results) {
+          // Enrichir data.results avec le contenu live
+          extractData.results.forEach(ex => {
+            const orig = data.results.find(r => r.url === ex.url);
+            if (orig && ex.raw_content) orig.raw_content = ex.raw_content.substring(0, 5000);
+          });
+        }
+      } catch(e) { /* fallback sur cache */ }
+    }
     const results = (data.results || []).filter(r => r.url.includes('leroymerlin.fr'));
 
     if (results.length === 0) {
