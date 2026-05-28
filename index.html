@@ -168,6 +168,7 @@
 <script>
 
 const TAVILY_API_KEY = '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';
+const SERPER_API_KEY = '11912ba8e1e1203880fb09fd134e28fd3c9d4de5';
 
 let selectedRef = 'P121-23';
 
@@ -216,6 +217,47 @@ async function fetchLiveLMPrice(url, apiKey) {
     } else {
       const p = parseFloat(offerMatch[1]);
       if (p > 5 && p < 2000) return p;
+    }
+
+    return null;
+  } catch(e) { return null; }
+}
+
+async function fetchPriceSerper(query) {
+  try {
+    const res = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-KEY": SERPER_API_KEY
+      },
+      body: JSON.stringify({
+        q: `"${query}" "leroy merlin" prix`,
+        gl: "fr",
+        hl: "fr",
+        num: 10
+      })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const results = [...(data.organic || []), ...(data.shopping || [])];
+
+    // Cherche "Vendu XX,XX €" dans les snippets — pattern exclusif LM
+    for (const r of results) {
+      const text = (r.snippet || r.price || '') + ' ' + (r.title || '');
+      const vendu = text.match(/Vendu\s+(\d+)\s*[,.]\s*(\d{2})\s*€/);
+      if (vendu) {
+        const p = parseFloat(vendu[1] + '.' + vendu[2]);
+        if (p > 5 && p < 2000) return { price: p, source: r.link || r.source };
+      }
+    }
+
+    // Fallback : prix le plus haut dans les snippets LM (> livraison)
+    const lmResults = results.filter(r => (r.link || '').includes('leroymerlin'));
+    for (const r of lmResults) {
+      const prices = extractAllPrices(r.snippet || '');
+      const valid = prices.filter(p => p > 5);
+      if (valid.length) return { price: Math.max(...valid), source: r.link };
     }
 
     return null;
