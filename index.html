@@ -14,7 +14,7 @@
   --mono:'DM Mono',monospace;--sans:'Syne',sans-serif;
 }
 body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;padding:40px 20px}
-.wrap{max-width:720px;margin:0 auto}
+.wrap{max-width:760px;margin:0 auto}
 header{margin-bottom:48px}
 .logo{display:flex;align-items:center;gap:12px;margin-bottom:8px}
 .logo-mark{width:36px;height:36px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center}
@@ -39,30 +39,23 @@ label{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);te
 .btn{width:100%;margin-top:24px;background:var(--accent);color:#0f0f0f;border:none;border-radius:8px;padding:14px;font-family:var(--sans);font-size:15px;font-weight:700;cursor:pointer;transition:opacity .15s}
 .btn:hover{opacity:.9}.btn:disabled{opacity:.4;cursor:not-allowed}
 #results{margin-top:36px}
-.results-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-.results-title{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
-.results-count{font-family:var(--mono);font-size:11px;color:var(--accent)}
-.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
-.stat{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
-.stat-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
-.stat-value{font-family:var(--mono);font-size:20px;font-weight:500}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px;animation:fadeIn .25s ease both}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
-.store-badge{font-family:var(--mono);font-size:10px;font-weight:500;padding:3px 8px;border-radius:4px;background:rgba(0,125,58,.2);color:var(--success);text-transform:uppercase;letter-spacing:.5px;display:inline-block;margin-bottom:6px}
+.store-badge{font-family:var(--mono);font-size:10px;font-weight:500;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px;display:inline-block;margin-bottom:6px}
+.store-badge.lm{background:rgba(0,125,58,.2);color:var(--success)}
+.store-badge.botanic{background:rgba(76,175,80,.15);color:#81c784}
+.store-badge.unavailable{background:rgba(255,68,68,.1);color:var(--danger)}
 .product-name{font-size:15px;font-weight:600;line-height:1.3}
-.product-snippet{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5}
 .price{font-family:var(--mono);font-size:26px;font-weight:500;color:var(--accent);white-space:nowrap}
-.card-bottom{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap}
-.tag{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px}
-.tag.lm-direct{background:rgba(77,255,145,.1);color:var(--success)}
+.price.unavailable{font-size:14px;color:var(--muted)}
+.card-bottom{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
 .link-btn{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:4px;padding:3px 10px;cursor:pointer;transition:all .15s;text-decoration:none;display:inline-block}
 .link-btn:hover{border-color:#555;color:var(--text)}
 .loading{text-align:center;padding:40px 0;font-family:var(--mono);font-size:13px;color:var(--muted)}
 .spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .error-box{background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;padding:16px;font-family:var(--mono);font-size:12px;color:var(--danger)}
-.info-row{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:14px}
 .divider{height:1px;background:var(--border);margin:28px 0}
 </style>
 </head>
@@ -83,28 +76,14 @@ label{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);te
 
   <div class="field">
     <label>Produit</label>
-    <div class="products-grid">
-      <div class="product-btn active" data-ref="P121-23" onclick="selectProduct(this)">
-        <div class="product-btn-ref">P121-23</div>
-        <div class="product-btn-name">Sécateur lame franche<br>BAHCO PRADINES · Ø 25 mm</div>
-      </div>
-      <div class="product-btn disabled">
-        <div class="product-btn-ref">+ ajouter</div>
-        <div class="product-btn-name">Prochain produit</div>
-      </div>
-    </div>
+    <div class="products-grid" id="productsGrid"></div>
   </div>
 
   <div class="divider"></div>
 
   <div class="field">
     <label>Sites à consulter</label>
-    <div class="sites-grid">
-      <div class="site-chip"><input type="checkbox" id="lm" checked><label for="lm"><span class="dot"></span>Leroy Merlin</label></div>
-      <div class="site-chip"><input type="checkbox" id="botanic"><label for="botanic"><span class="dot"></span>Botanic</label></div>
-      <div class="site-chip"><input type="checkbox" id="casto" disabled><label for="casto" style="opacity:.4;cursor:default"><span class="dot"></span>Castorama <span style="font-size:9px">(bientôt)</span></label></div>
-      <div class="site-chip"><input type="checkbox" id="amz" disabled><label for="amz" style="opacity:.4;cursor:default"><span class="dot"></span>Amazon <span style="font-size:9px">(bientôt)</span></label></div>
-    </div>
+    <div class="sites-grid" id="sitesGrid"></div>
   </div>
 
   <button class="btn" id="searchBtn" onclick="launchSearch()">Lancer la recherche</button>
@@ -112,10 +91,57 @@ label{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);te
 </div>
 
 <script>
-const TAVILY_KEY  = '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';
-const SERPER_KEY  = '11912ba8e1e1203880fb09fd134e28fd3c9d4de5';
+// ─────────────────────────────────────────────
+// CONFIG — ajouter les produits et URLs ici
+// ─────────────────────────────────────────────
+const PRODUCTS = [
+  {
+    ref: 'P121-23',
+    name: 'Sécateur lame franche\nBAHCO PRADINES · Ø 25 mm',
+    sites: {
+      lm:      'https://www.leroymerlin.fr/produits/secateur-bahco-pradines-p121-23-f-25-mm-made-in-france-75851613.html',
+      botanic: 'https://www.botanic.com/produit/1157801/secateur-de-jardinier-gaucher-coloris-orange-25-mm-bahco-14-5-x-3-x-23-cm.html'
+    }
+  }
+  // Ajouter d'autres produits ici :
+  // { ref: 'P126-22', name: '...', sites: { lm: '...', botanic: '...' } }
+];
 
-let selectedRef = 'P121-23';
+const SITES = [
+  { id: 'lm',      label: 'Leroy Merlin', domain: 'leroymerlin.fr',  badge: 'lm' },
+  { id: 'botanic', label: 'Botanic',       domain: 'botanic.com',     badge: 'botanic' }
+];
+
+const SERPER_KEY = '11912ba8e1e1203880fb09fd134e28fd3c9d4de5';
+// ─────────────────────────────────────────────
+
+let selectedRef = PRODUCTS[0].ref;
+
+// Rendu dynamique des boutons produits
+function renderProducts() {
+  const grid = document.getElementById('productsGrid');
+  grid.innerHTML = PRODUCTS.map(p => `
+    <div class="product-btn ${p.ref === selectedRef ? 'active' : ''}" data-ref="${p.ref}" onclick="selectProduct(this)">
+      <div class="product-btn-ref">${p.ref}</div>
+      <div class="product-btn-name">${p.name.replace('\n','<br>')}</div>
+    </div>
+  `).join('') + `
+    <div class="product-btn disabled">
+      <div class="product-btn-ref">+ ajouter</div>
+      <div class="product-btn-name">Prochain produit</div>
+    </div>`;
+}
+
+// Rendu dynamique des sites
+function renderSites() {
+  const grid = document.getElementById('sitesGrid');
+  grid.innerHTML = SITES.map(s => `
+    <div class="site-chip">
+      <input type="checkbox" id="${s.id}" ${s.id === 'lm' ? 'checked' : ''}>
+      <label for="${s.id}"><span class="dot"></span>${s.label}</label>
+    </div>
+  `).join('');
+}
 
 function selectProduct(el) {
   if (el.classList.contains('disabled')) return;
@@ -124,50 +150,33 @@ function selectProduct(el) {
   selectedRef = el.dataset.ref;
 }
 
-function extractAllPrices(text) {
+function extractPrices(text) {
   if (!text) return [];
   const t = text.replace(/\u00a0/g,' ').replace(/\s+/g,' ');
   const re = /(\d{1,4})\s*[,.]\s*(\d{2})\s*€|(\d{1,4})\s*€(?![\d,.])/g;
-  const seen = new Set();
-  const out = [];
+  const seen = new Set(); const out = [];
   let m;
   while ((m = re.exec(t)) !== null) {
     const v = m[3] ? parseFloat(m[3]) : parseFloat(m[1]+'.'+m[2]);
-    if (v > 1 && v < 2000 && !seen.has(v)) { seen.add(v); out.push(v); }
+    if (v > 5 && v < 2000 && !seen.has(v)) { seen.add(v); out.push(v); }
   }
   return out;
 }
 
-async function getUrlsFromTavily(query, domain) {
-  console.log('[Tavily] searching:', query, 'on', domain);
-  try {
-    const res = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        api_key: TAVILY_KEY,
-        query: `"${query}" "${domain.replace('.fr','')}" prix`,
-        search_depth: 'basic',
-        include_domains: [domain],
-        max_results: 5
-      })
-    });
-    const data = await res.json();
-    console.log('[Tavily] results:', data.results?.length);
-    return (data.results || []).filter(r => r.url.includes(domain));
-  } catch(e) {
-    console.error('[Tavily] error:', e);
-    return [];
-  }
-}
+// Récupère le prix via Serper en ciblant l'URL exacte
+async function fetchPrice(url, domain) {
+  // Extrait l'identifiant unique de l'URL (dernier segment numérique)
+  const idMatch = url.match(/[\-\/](\d{6,})/g);
+  const productId = idMatch ? idMatch[idMatch.length-1].replace(/[\-\/]/g,'') : null;
+  const query = productId
+    ? `site:${domain} "${productId}"`
+    : `site:${domain} "${url.split('/').pop().split('.')[0]}"`;
 
-async function getPriceFromSerper(query, domain) {
-  console.log('[Serper] searching:', query, 'on', domain);
   try {
     const res = await fetch('https://google.serper.dev/search', {
       method: 'POST',
       headers: {'Content-Type':'application/json','X-API-KEY': SERPER_KEY},
-      body: JSON.stringify({q: `"${query}" ${domain} prix`, gl:'fr', hl:'fr', num:10})
+      body: JSON.stringify({q: query, gl:'fr', hl:'fr', num:5})
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -175,95 +184,74 @@ async function getPriceFromSerper(query, domain) {
 
     const candidates = [];
     for (const r of results) {
-      const prices = extractAllPrices(r.snippet || '').filter(p => p > 10);
-      candidates.push(...prices.map(p => ({price: p, url: r.link})));
+      const prices = extractPrices(r.snippet || '').filter(p => p > 5);
+      candidates.push(...prices);
     }
     if (!candidates.length) return null;
 
+    // Prix le plus fréquent
     const freq = {};
-    candidates.forEach(({price}) => freq[price] = (freq[price]||0)+1);
-    const best = Object.entries(freq).sort((a,b) => b[1]-a[1]||b[0]-a[0])[0];
-    const bestPrice = parseFloat(best[0]);
-    return {price: bestPrice, url: candidates.find(c => c.price===bestPrice)?.url};
-  } catch(e) {
-    console.error('[Serper] error:', e);
-    return null;
-  }
+    candidates.forEach(p => freq[p] = (freq[p]||0)+1);
+    return parseFloat(Object.entries(freq).sort((a,b) => b[1]-a[1]||b[0]-a[0])[0][0]);
+  } catch(e) { return null; }
 }
 
 async function launchSearch() {
   const out = document.getElementById('results');
   const btn = document.getElementById('searchBtn');
-  const query = selectedRef;
+
+  const product = PRODUCTS.find(p => p.ref === selectedRef);
+  const selectedSites = SITES.filter(s => document.getElementById(s.id)?.checked);
+
+  if (!selectedSites.length) {
+    out.innerHTML = '<div class="error-box">Sélectionne au moins un site.</div>';
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = 'Recherche en cours...';
-  out.innerHTML = '<div class="loading"><div class="spinner"></div><br>Recherche en cours...</div>';
+  out.innerHTML = '<div class="loading"><div class="spinner"></div><br>Récupération des prix...</div>';
 
   try {
-    const sites = [];
-    if (document.getElementById('lm')?.checked)     sites.push({domain:'leroymerlin.fr', label:'Leroy Merlin'});
-    if (document.getElementById('botanic')?.checked) sites.push({domain:'botanic.com',    label:'Botanic'});
-
-    if (!sites.length) {
-      out.innerHTML = '<div class="error-box">Sélectionne au moins un site.</div>';
-      return;
-    }
-
-    const siteResults = await Promise.all(sites.map(async site => {
-      const [pages, serperResult] = await Promise.all([
-        getUrlsFromTavily(query, site.domain),
-        getPriceFromSerper(query, site.domain)
-      ]);
-      const refNorm = query.replace(/-/g,'').toLowerCase();
-      const scored = pages.map(p => {
-        const combined = ((p.title||'')+(p.url||'')).replace(/-/g,'').toLowerCase();
-        const hasRef = combined.includes(refNorm);
-        const isFrVariant = /madeinfrancep|p12123f/.test(combined);
-        return { ...p, score: hasRef ? (isFrVariant ? 1 : 2) : 0 };
-      }).sort((a,b) => b.score - a.score);
-      // Prend le meilleur scoré, sinon le premier disponible
-      const bestPage = scored.find(p => p.score > 0) || scored[0] || null;
-      return { site, page: bestPage, price: serperResult?.price || null };
+    const results = await Promise.all(selectedSites.map(async site => {
+      const url = product.sites[site.id];
+      if (!url) return { site, url: null, price: null };
+      const price = await fetchPrice(url, site.domain);
+      return { site, url, price };
     }));
 
-    const validResults = siteResults.filter(r => r.page || r.price);
-    if (!validResults.length) {
-      out.innerHTML = `<div class="error-box">Aucun résultat trouvé pour "${query}".</div>`;
+    if (!results.length) {
+      out.innerHTML = `<div class="error-box">Aucun résultat pour "${selectedRef}".</div>`;
       return;
     }
 
-    let html = '';
-    validResults.forEach((r, i) => {
-      const p = r.page;
-      const name = p?.title?.replace(/\s*[|\u2013-]\s*(Leroy Merlin|Botanic).*/i,'').trim() || query;
-      const snippet = (p?.content||'').substring(0,180);
-      html += `<div class="card" style="animation-delay:${i*.08}s">
+    out.innerHTML = results.map((r, i) => {
+      const hasUrl = !!r.url;
+      const hasPrice = r.price !== null;
+      return `<div class="card" style="animation-delay:${i*.08}s">
         <div class="card-top">
           <div style="flex:1;min-width:0">
-            <span class="store-badge">${r.site.label}</span>
-            <div class="product-name">${name}</div>
-            ${snippet ? `<div class="product-snippet">${snippet}…</div>` : ''}
+            <span class="store-badge ${hasUrl ? r.site.badge : 'unavailable'}">${r.site.label}</span>
+            <div class="product-name">${product.name.replace('\n','<br>')}</div>
           </div>
-          <div class="price">${r.price ? r.price.toFixed(2)+' €' : '—'}</div>
+          <div class="price ${hasPrice ? '' : 'unavailable'}">${hasPrice ? r.price.toFixed(2)+' €' : 'Non disponible'}</div>
         </div>
         <div class="card-bottom">
-          <span class="tag lm-direct">${r.site.label}</span>
-          ${p?.url ? `<a class="link-btn" href="${p.url}" target="_blank">↗ voir le produit</a>` : ''}
+          ${hasUrl ? `<a class="link-btn" href="${r.url}" target="_blank">↗ voir le produit</a>` : ''}
         </div>
       </div>`;
-    });
-
-    out.innerHTML = html;
+    }).join('');
 
   } catch(e) {
-    console.error('[App] error:', e);
     out.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
   } finally {
     btn.disabled = false;
     btn.textContent = 'Lancer la recherche';
   }
 }
+
+renderProducts();
+renderSites();
 </script>
 </body>
 </html>
