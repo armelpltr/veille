@@ -44,11 +44,11 @@ label{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);te
 .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .store-badge{font-family:var(--mono);font-size:10px;font-weight:500;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px;display:inline-block;margin-bottom:6px}
 .store-badge.lm{background:rgba(0,125,58,.2);color:var(--success)}
-.store-badge.botanic{background:rgba(76,175,80,.15);color:#81c784}
-.store-badge.unavailable{background:rgba(255,68,68,.1);color:var(--danger)}
+.store-badge.botanic{background:rgba(129,199,132,.15);color:#81c784}
 .product-name{font-size:15px;font-weight:600;line-height:1.3}
+.product-found-name{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px}
 .price{font-family:var(--mono);font-size:26px;font-weight:500;color:var(--accent);white-space:nowrap}
-.price.unavailable{font-size:14px;color:var(--muted)}
+.price.na{font-size:14px;color:var(--muted)}
 .card-bottom{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
 .link-btn{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:4px;padding:3px 10px;cursor:pointer;transition:all .15s;text-decoration:none;display:inline-block}
 .link-btn:hover{border-color:#555;color:var(--text)}
@@ -91,56 +91,58 @@ label{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);te
 </div>
 
 <script>
-// ─────────────────────────────────────────────
-// CONFIG — ajouter les produits et URLs ici
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  CONFIG — renseigner les produits et leurs URLs ici
+// ═══════════════════════════════════════════════════
 const PRODUCTS = [
   {
-    ref: 'P121-23',
+    ref:  'P121-23',
     name: 'Sécateur lame franche\nBAHCO PRADINES · Ø 25 mm',
     sites: {
-      lm:      'https://www.leroymerlin.fr/produits/secateur-bahco-pradines-p121-23-f-25-mm-made-in-france-75851613.html',
-      botanic: 'https://www.botanic.com/produit/1157801/secateur-de-jardinier-gaucher-coloris-orange-25-mm-bahco-14-5-x-3-x-23-cm.html'
+      lm: {
+        url:        'https://www.leroymerlin.fr/produits/secateur-bahco-pradines-p121-23-f-25-mm-made-in-france-75851613.html',
+        shopQuery:  'Sécateur Bahco Pradines P121-23-F 25mm Made in France Leroy Merlin',
+        source:     'Leroy Merlin'
+      },
+      botanic: {
+        url:        'https://www.botanic.com/produit/1157801/secateur-de-jardinier-gaucher-coloris-orange-25-mm-bahco-14-5-x-3-x-23-cm.html',
+        shopQuery:  'sécateur gaucher Bahco 25mm orange botanic',
+        source:     'Botanic'
+      }
     }
   }
-  // Ajouter d'autres produits ici :
-  // { ref: 'P126-22', name: '...', sites: { lm: '...', botanic: '...' } }
+  // Ajouter d'autres produits ici
 ];
 
 const SITES = [
-  { id: 'lm',      label: 'Leroy Merlin', domain: 'leroymerlin.fr',  badge: 'lm' },
-  { id: 'botanic', label: 'Botanic',       domain: 'botanic.com',     badge: 'botanic' }
+  { id: 'lm',      label: 'Leroy Merlin', badge: 'lm' },
+  { id: 'botanic', label: 'Botanic',       badge: 'botanic' }
 ];
 
 const SERPER_KEY = '11912ba8e1e1203880fb09fd134e28fd3c9d4de5';
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════════
 
 let selectedRef = PRODUCTS[0].ref;
 
-// Rendu dynamique des boutons produits
 function renderProducts() {
-  const grid = document.getElementById('productsGrid');
-  grid.innerHTML = PRODUCTS.map(p => `
-    <div class="product-btn ${p.ref === selectedRef ? 'active' : ''}" data-ref="${p.ref}" onclick="selectProduct(this)">
-      <div class="product-btn-ref">${p.ref}</div>
-      <div class="product-btn-name">${p.name.replace('\n','<br>')}</div>
-    </div>
-  `).join('') + `
-    <div class="product-btn disabled">
+  document.getElementById('productsGrid').innerHTML =
+    PRODUCTS.map(p => `
+      <div class="product-btn ${p.ref===selectedRef?'active':''}" data-ref="${p.ref}" onclick="selectProduct(this)">
+        <div class="product-btn-ref">${p.ref}</div>
+        <div class="product-btn-name">${p.name.replace('\n','<br>')}</div>
+      </div>`).join('') +
+    `<div class="product-btn disabled">
       <div class="product-btn-ref">+ ajouter</div>
       <div class="product-btn-name">Prochain produit</div>
     </div>`;
 }
 
-// Rendu dynamique des sites
 function renderSites() {
-  const grid = document.getElementById('sitesGrid');
-  grid.innerHTML = SITES.map(s => `
+  document.getElementById('sitesGrid').innerHTML = SITES.map(s => `
     <div class="site-chip">
-      <input type="checkbox" id="${s.id}" ${s.id === 'lm' ? 'checked' : ''}>
+      <input type="checkbox" id="${s.id}" ${s.id==='lm'?'checked':''}>
       <label for="${s.id}"><span class="dot"></span>${s.label}</label>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 function selectProduct(el) {
@@ -150,56 +152,37 @@ function selectProduct(el) {
   selectedRef = el.dataset.ref;
 }
 
-function extractPrices(text) {
-  if (!text) return [];
-  const t = text.replace(/\u00a0/g,' ').replace(/\s+/g,' ');
-  const re = /(\d{1,4})\s*[,.]\s*(\d{2})\s*€|(\d{1,4})\s*€(?![\d,.])/g;
-  const seen = new Set(); const out = [];
-  let m;
-  while ((m = re.exec(t)) !== null) {
-    const v = m[3] ? parseFloat(m[3]) : parseFloat(m[1]+'.'+m[2]);
-    if (v > 5 && v < 2000 && !seen.has(v)) { seen.add(v); out.push(v); }
-  }
-  return out;
+function parsePrice(str) {
+  if (!str) return null;
+  const m = str.replace(/\s/g,'').match(/([\d]+[,.][\d]{2})/);
+  if (!m) return null;
+  const v = parseFloat(m[1].replace(',','.'));
+  return v > 1 && v < 2000 ? v : null;
 }
 
-// Récupère le prix via Serper en ciblant l'URL exacte
-async function fetchPrice(url, domain) {
-  // Extrait l'identifiant unique de l'URL (dernier segment numérique)
-  const idMatch = url.match(/[\-\/](\d{6,})/g);
-  const productId = idMatch ? idMatch[idMatch.length-1].replace(/[\-\/]/g,'') : null;
-  const query = productId
-    ? `site:${domain} "${productId}"`
-    : `site:${domain} "${url.split('/').pop().split('.')[0]}"`;
-
+// Google Shopping via Serper
+async function fetchShoppingPrice(shopQuery, source) {
   try {
-    const res = await fetch('https://google.serper.dev/search', {
+    const res = await fetch('https://google.serper.dev/shopping', {
       method: 'POST',
       headers: {'Content-Type':'application/json','X-API-KEY': SERPER_KEY},
-      body: JSON.stringify({q: query, gl:'fr', hl:'fr', num:5})
+      body: JSON.stringify({q: shopQuery, gl:'fr', hl:'fr', num:10})
     });
     if (!res.ok) return null;
     const data = await res.json();
-    const results = (data.organic || []).filter(r => (r.link||'').includes(domain));
-
-    const candidates = [];
-    for (const r of results) {
-      const prices = extractPrices(r.snippet || '').filter(p => p > 5);
-      candidates.push(...prices);
-    }
-    if (!candidates.length) return null;
-
-    // Prix le plus fréquent
-    const freq = {};
-    candidates.forEach(p => freq[p] = (freq[p]||0)+1);
-    return parseFloat(Object.entries(freq).sort((a,b) => b[1]-a[1]||b[0]-a[0])[0][0]);
+    const items = (data.shopping || []).filter(r =>
+      (r.source||'').toLowerCase().includes(source.toLowerCase())
+    );
+    if (!items.length) return null;
+    // Premier résultat de la bonne enseigne
+    const price = parsePrice(items[0].price);
+    return price ? { price, title: items[0].title, link: items[0].link } : null;
   } catch(e) { return null; }
 }
 
 async function launchSearch() {
   const out = document.getElementById('results');
   const btn = document.getElementById('searchBtn');
-
   const product = PRODUCTS.find(p => p.ref === selectedRef);
   const selectedSites = SITES.filter(s => document.getElementById(s.id)?.checked);
 
@@ -210,37 +193,30 @@ async function launchSearch() {
 
   btn.disabled = true;
   btn.textContent = 'Recherche en cours...';
-  out.innerHTML = '<div class="loading"><div class="spinner"></div><br>Récupération des prix...</div>';
+  out.innerHTML = '<div class="loading"><div class="spinner"></div><br>Récupération des prix Google Shopping...</div>';
 
   try {
     const results = await Promise.all(selectedSites.map(async site => {
-      const url = product.sites[site.id];
-      if (!url) return { site, url: null, price: null };
-      const price = await fetchPrice(url, site.domain);
-      return { site, url, price };
+      const cfg = product.sites[site.id];
+      if (!cfg) return { site, cfg: null, result: null };
+      const result = await fetchShoppingPrice(cfg.shopQuery, cfg.source);
+      return { site, cfg, result };
     }));
 
-    if (!results.length) {
-      out.innerHTML = `<div class="error-box">Aucun résultat pour "${selectedRef}".</div>`;
-      return;
-    }
-
-    out.innerHTML = results.map((r, i) => {
-      const hasUrl = !!r.url;
-      const hasPrice = r.price !== null;
-      return `<div class="card" style="animation-delay:${i*.08}s">
+    out.innerHTML = results.map((r, i) => `
+      <div class="card" style="animation-delay:${i*.08}s">
         <div class="card-top">
           <div style="flex:1;min-width:0">
-            <span class="store-badge ${hasUrl ? r.site.badge : 'unavailable'}">${r.site.label}</span>
+            <span class="store-badge ${r.site.badge}">${r.site.label}</span>
             <div class="product-name">${product.name.replace('\n','<br>')}</div>
+            ${r.result?.title ? `<div class="product-found-name">${r.result.title}</div>` : ''}
           </div>
-          <div class="price ${hasPrice ? '' : 'unavailable'}">${hasPrice ? r.price.toFixed(2)+' €' : 'Non disponible'}</div>
+          <div class="price ${r.result ? '' : 'na'}">${r.result ? r.result.price.toFixed(2)+' €' : 'Non disponible'}</div>
         </div>
         <div class="card-bottom">
-          ${hasUrl ? `<a class="link-btn" href="${r.url}" target="_blank">↗ voir le produit</a>` : ''}
+          ${r.cfg?.url ? `<a class="link-btn" href="${r.cfg.url}" target="_blank">↗ voir le produit</a>` : ''}
         </div>
-      </div>`;
-    }).join('');
+      </div>`).join('');
 
   } catch(e) {
     out.innerHTML = `<div class="error-box">Erreur : ${e.message}</div>`;
